@@ -89,6 +89,34 @@ public class Main {
 
             QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
 
+            // 쿼리 실행 및 Job 생성
+            Job job = bigquery.create(JobInfo.of(queryConfig));
+
+            // Job이 완료될 때까지 대기
+            job = job.waitFor();
+
+            if (job == null) {
+                System.out.println("Before BigQuery");
+                return;
+            } else if (job.getStatus().getError() != null) {
+                System.out.println("Query not performed \n" + job.getStatus().getError().toString());
+                return;
+            }
+
+            //작업(Job) 정보 가져오기
+            JobStatistics.QueryStatistics stats = job.getStatistics();
+            System.out.println("쿼리 실행 완료!");
+            System.out.println("작업 ID: " + job.getJobId().getJob());
+            System.out.println("총 처리 바이트: " + stats.getTotalBytesProcessed() + " bytes");
+            System.out.println("총 청구 바이트: " + stats.getTotalBytesBilled() + " bytes");
+
+            //없는 메소드인듯?
+            //System.out.println("쿼리 실행 시간: " + stats.getExecutionTime() + " ms");
+            //System.out.println("쿼리 대기 시간: " + stats.getPendingTime() + " ms");
+            System.out.println("캐시 사용 여부: " + stats.getCacheHit());
+            System.out.println("DML 영향 받은 행 수: " + stats.getNumDmlAffectedRows());
+
+            //쿼리 결과 가져오기
             TableResult result = bigquery.query(queryConfig);
             System.out.println("\n쿼리 simple 성공!");
             System.out.println(result.toString());
