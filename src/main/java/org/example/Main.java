@@ -14,7 +14,6 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.List;
 
 
 public class Main {
@@ -58,7 +57,7 @@ public class Main {
         System.out.println("실행할 Query : " + query);
 
         queryDryRun(query);
-        //queryDryRun("SELECT *  FROM ` sodium-keel-451407-g2.test_dataset_001.test_table_001` "); //오류 테스트
+        queryDryRun("SELECT *  FROM ` sodium-keel-451407-g2.test_dataset_001.test_table_001` "); //오류 테스트
         simpleQuery(query);
         //queryBatch(query);
     }
@@ -79,10 +78,10 @@ public class Main {
 
             // Dry-run 결과 출력
             System.out.println("\n쿼리 Dry Run 성공!");
-            System.out.println("총 처리 바이트 (TotalBytesProcessed): " + statistics.getTotalBytesProcessed() + " bytes");
+            System.out.println("총 처리 바이트 (TotalBytesProcessed): " + statistics.getTotalBytesProcessed() + " bytes\n");
 
         } catch (BigQueryException e) {
-            System.out.println("Query not performed \n" + e.toString());
+            System.out.println("Query is invalid or another error occurred: \n" + e.toString() + "\n");
         }
     }
 
@@ -124,9 +123,8 @@ public class Main {
 
             //쿼리 결과 가져오기
             TableResult result = bigquery.query(queryConfig);
-            System.out.println("\n쿼리 simple 성공!");
+            System.out.println("\n쿼리 수행 결과");
             System.out.println(result.toString());
-            System.out.println("Query ran successfully");
 
         } catch (BigQueryException | InterruptedException e) {
             System.out.println("Query did not run \n" + e.toString());
