@@ -8,19 +8,13 @@ package org.example;
  */
 
 
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.Job;
-import com.google.cloud.bigquery.JobInfo;
-import com.google.cloud.bigquery.JobStatistics;
-import com.google.cloud.bigquery.QueryJobConfiguration;
+import com.google.cloud.bigquery.*;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import java.io.FileInputStream;
 import java.io.IOException;
-import com.google.cloud.bigquery.TableResult;
+import java.util.List;
 
 
 public class Main {
@@ -47,12 +41,24 @@ public class Main {
         String projectId = bigquery.getOptions().getProjectId();
         String datasetName = "test_dataset_001";
         String tableName = "test_table_001";
+
+        //현재 프로젝트의 데이터 세트 목록 조회
+        for(Dataset dataset : bigquery.listDatasets().iterateAll()) {
+            System.out.println(dataset.getDatasetId().getDataset());
+        }
+
+        //현재 프로젝트의 한 데이터 세트 속 테이블 목록 조회
+        for (Table table : bigquery.listTables(datasetName).iterateAll()) {
+            System.out.println(table.getTableId().getTable());
+        }
+
         String query = " SELECT * "
-                     + " FROM `" + projectId + "."+ datasetName + "." + tableName + "` "; //백틱과 프로젝트ID 사이에 띄어쓰기 되어있으면 오류
+                     + " FROM `" + projectId + "."+ datasetName + "." + tableName + "` ";
 
         System.out.println("실행할 Query : " + query);
 
-        //queryDryRun(query);
+        queryDryRun(query);
+        //queryDryRun("SELECT *  FROM ` sodium-keel-451407-g2.test_dataset_001.test_table_001` "); //오류 테스트
         simpleQuery(query);
         //queryBatch(query);
     }
@@ -74,7 +80,6 @@ public class Main {
             // Dry-run 결과 출력
             System.out.println("\n쿼리 Dry Run 성공!");
             System.out.println("총 처리 바이트 (TotalBytesProcessed): " + statistics.getTotalBytesProcessed() + " bytes");
-            System.out.println("총 청구 바이트 (TotalBytesBilled): " + statistics.getTotalBytesBilled() + " bytes");
 
         } catch (BigQueryException e) {
             System.out.println("Query not performed \n" + e.toString());
@@ -86,8 +91,8 @@ public class Main {
      */
     public static void simpleQuery(String query) {
         try {
-
-            QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
+            //캐시를 사용한 경우 처리되거나 청구된 바이트 없을 수 있다.
+            QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).setUseQueryCache(false).build();
 
             // 쿼리 실행 및 Job 생성
             Job job = bigquery.create(JobInfo.of(queryConfig));
@@ -107,20 +112,22 @@ public class Main {
             JobStatistics.QueryStatistics stats = job.getStatistics();
             System.out.println("쿼리 실행 완료!");
             System.out.println("작업 ID: " + job.getJobId().getJob());
-            System.out.println("총 처리 바이트: " + stats.getTotalBytesProcessed() + " bytes");
-            System.out.println("총 청구 바이트: " + stats.getTotalBytesBilled() + " bytes");
-
-            //없는 메소드인듯?
-            //System.out.println("쿼리 실행 시간: " + stats.getExecutionTime() + " ms");
-            //System.out.println("쿼리 대기 시간: " + stats.getPendingTime() + " ms");
+            System.out.println("사용자: " + job.getUserEmail());
+            System.out.println("만든 시간: " + job.getStatistics().getCreationTime()); //stats 가 아닌 JobStatistics 슈퍼 클래스에 존재하는 메소드임
+            System.out.println("시작 시간: " + job.getStatistics().getStartTime());
+            System.out.println("종료 시간: " + job.getStatistics().getEndTime());
+            System.out.println("처리한 바이트: " + stats.getTotalBytesProcessed() + " bytes");
+            System.out.println("청구된 바이트: " + stats.getTotalBytesBilled() + " bytes");
+            System.out.println("슬롯 밀리초: " + job.getStatistics().getTotalSlotMs() + " ms");
+            System.out.println("legacy SQL 사용: " + queryConfig.useLegacySql());
             System.out.println("캐시 사용 여부: " + stats.getCacheHit());
-            System.out.println("DML 영향 받은 행 수: " + stats.getNumDmlAffectedRows());
 
             //쿼리 결과 가져오기
             TableResult result = bigquery.query(queryConfig);
             System.out.println("\n쿼리 simple 성공!");
             System.out.println(result.toString());
             System.out.println("Query ran successfully");
+
         } catch (BigQueryException | InterruptedException e) {
             System.out.println("Query did not run \n" + e.toString());
         }
@@ -136,7 +143,6 @@ public class Main {
 
             TableResult results = bigquery.query(queryConfig);
             System.out.println("\n쿼리 batch 성공!");
-            //results.iterateAll().forEach(row -> row.forEach(val -> System.out.printf("%s,", val.toString())));
 
             System.out.println(results.toString());
             System.out.println("Query batch performed successfully.");
